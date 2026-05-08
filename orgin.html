@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Word Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- download pdf -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; }
+
+        .theme-paper { --bg: #ffffff; --text: #1a1a1a; --editor: #ffffff; --shadow: rgba(0, 0, 0, 0.1); }
+        .theme-dark { --bg: #121212; --text: #e5e7eb; --editor: #1e1e1e; --shadow: rgba(0, 0, 0, 0.4); }
+        .theme-sepia { --bg: #f4ecd8; --text: #5b4636; --editor: #fdf6e3; --shadow: rgba(91, 70, 54, 0.1); }
+        .theme-ocean { --bg: #0f172a; --text: #f8fafc; --editor: #1e293b; --shadow: rgba(0, 0, 0, 0.3); }
+        .theme-forest { --bg: #064e3b; --text: #ecfdf5; --editor: #065f46; --shadow: rgba(0, 0, 0, 0.3); }
+
+        [contenteditable]:empty:before {
+            content: attr(placeholder);
+            color: #9ca3af;
+            font-style: italic;
+        }
+
+        .editor-surface {
+            background-color: var(--editor);
+            color: var(--text);
+            box-shadow: 0 10px 25px -5px var(--shadow), 0 8px 10px -6px var(--shadow);
+        }
+
+        h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; }
+        h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.75rem; }
+        p { margin-bottom: 1rem; }
+        ul { list-style-type: disc; margin-left: 2rem; margin-bottom: 1rem; }
+        ol { list-style-type: decimal; margin-left: 2rem; margin-bottom: 1rem; }
+
+        @media print {
+            .no-print { display: none !important; }
+            body, html { background: white !important; color: black !important; }
+            main { padding: 0 !important; overflow: visible !important; }
+            .editor-surface { 
+                box-shadow: none !important; 
+                background: white !important; 
+                color: black !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+            @page { margin: 1.5cm; }
+        }
+
+        /* Tooltip style */
+        .toolbar-btn {
+            position: relative;
+        }
+        .toolbar-btn:hover::after {
+            content: attr(data-label);
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body class="transition-colors duration-300 theme-paper" id="app-body" style="background-color: var(--bg); color: var(--text);">
+
+    <!-- UI Overlay for Message Box -->
+    <div id="status-toast" class="fixed bottom-6 right-6 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg transform translate-y-20 transition-transform duration-300 z-50 flex items-center gap-2">
+        <span id="toast-message">Document Saved</span>
+    </div>
+
+    <!-- Header / Nav -->
+    <header class="no-print sticky top-0 z-30 bg-white/10 backdrop-blur-md border-b border-white/20 p-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg text-white">
+                <i data-lucide="file-text" size="20"></i>
+            </div>
+            <input 
+                id="doc-title"
+                type="text" 
+                value="Untitled Document"
+                class="bg-transparent border-none text-xl font-semibold focus:outline-none focus:ring-0 w-48 md:w-64"
+                placeholder="Document Title"
+            />
+            <div id="saving-indicator" class="hidden text-xs opacity-50 italic animate-pulse">Saving...</div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Theme Picker -->
+            <div class="relative group">
+                <button id="theme-btn" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/20 transition">
+                    <i data-lucide="palette" size="18"></i>
+                    <span class="hidden md:inline">Theme</span>
+                    <i data-lucide="chevron-down" size="14"></i>
+                </button>
+                <div id="theme-menu" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-800 rounded-xl shadow-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden z-50">
+                    <button onclick="setTheme('paper')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition text-zinc-800 dark:text-zinc-200">
+                        <div class="w-4 h-4 rounded-full border border-zinc-300 bg-white"></div> Paper
+                    </button>
+                    <button onclick="setTheme('dark')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition text-zinc-800 dark:text-zinc-200">
+                        <div class="w-4 h-4 rounded-full border border-zinc-300 bg-zinc-900"></div> Dark
+                    </button>
+                    <button onclick="setTheme('sepia')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition text-zinc-800 dark:text-zinc-200">
+                        <div class="w-4 h-4 rounded-full border border-zinc-300 bg-[#f4ecd8]"></div> Sepia
+                    </button>
+                    <button onclick="setTheme('ocean')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition text-zinc-800 dark:text-zinc-200">
+                        <div class="w-4 h-4 rounded-full border border-zinc-300 bg-[#0f172a]"></div> Ocean
+                    </button>
+                    <button onclick="setTheme('forest')" class="w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition text-zinc-800 dark:text-zinc-200">
+                        <div class="w-4 h-4 rounded-full border border-zinc-300 bg-[#064e3b]"></div> Forest
+                    </button>
+                </div>
+            </div>
+
+            <div class="h-6 w-px bg-white/20 mx-2 hidden md:block"></div>
+
+            <button id="pdf-btn" class="p-2 rounded-lg hover:bg-white/20 transition flex items-center gap-2">
+                <i data-lucide="download" size="18"></i>
+                <span class="hidden md:inline text-sm font-medium">PDF</span>
+            </button>
+            
+            <button id="docx-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                <i data-lucide="save" size="18"></i>
+                <span class="text-sm font-medium">Export DOCX</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Toolbar -->
+    <div class="no-print bg-white/5 backdrop-blur-sm border-b border-white/10 p-2 flex flex-wrap justify-center gap-1">
+        <button onclick="format('bold')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Bold"><i data-lucide="bold" size="18"></i></button>
+        <button onclick="format('italic')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Italic"><i data-lucide="italic" size="18"></i></button>
+        <button onclick="format('underline')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Underline"><i data-lucide="underline" size="18"></i></button>
+        <div class="w-px h-6 bg-white/10 mx-1"></div>
+        <button onclick="format('insertUnorderedList')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Bullets"><i data-lucide="list" size="18"></i></button>
+        <button onclick="format('insertOrderedList')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Numbered"><i data-lucide="list-ordered" size="18"></i></button>
+        <div class="w-px h-6 bg-white/10 mx-1"></div>
+        <button onclick="format('justifyLeft')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Align Left"><i data-lucide="align-left" size="18"></i></button>
+        <button onclick="format('justifyCenter')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Align Center"><i data-lucide="align-center" size="18"></i></button>
+        <button onclick="format('justifyRight')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Align Right"><i data-lucide="align-right" size="18"></i></button>
+        <div class="w-px h-6 bg-white/10 mx-1"></div>
+        <button onclick="promptFontSize()" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Font Size"><i data-lucide="type" size="18"></i></button>
+    </div>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 overflow-auto p-4 md:p-12 flex justify-center min-h-[calc(100vh-120px)]">
+        <div 
+            id="editor"
+            contenteditable="true"
+            placeholder="Start writing your dude..."
+            class="editor-surface w-full max-w-4xl min-h-[1100px] p-12 md:p-20 rounded-sm focus:outline-none text-lg leading-relaxed transition-all duration-500"
+        ></div>
+    </main>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+        // --- Config ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyBhpPdbiFaleEBD3q54Odg_8nMVdmYkQe8",
+          authDomain: "cloud-word-editor.firebaseapp.com",
+          projectId: "cloud-word-editor",
+          storageBucket: "cloud-word-editor.firebasestorage.app",
+          messagingSenderId: "235829445412",
+          appId: "1:235829445412:web:d50e5814d804dc2ab169b1",
+          measurementId: "G-5JLCW2TH9S"
+        };
+        console.log("firebaseConfig", firebaseConfig);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'word-platform-1';
+
+        // --- State ---
+        let currentTheme = 'paper';
+        let lastKnownContent = '';
+        let currentUser = null;
+        let isSyncing = false;
+        let saveTimeout = null;
+
+        const editor = document.getElementById('editor');
+        const docTitle = document.getElementById('doc-title');
+        const savingIndicator = document.getElementById('saving-indicator');
+
+        // --- Auth & Init ---
+        async function start() {
+            try {
+                await signInAnonymously(auth);
+                onAuthStateChanged(auth, (user) => {
+                    console.log('onAuthStateChanged', 'user: ', user);
+                    if (user) {
+                        currentUser = user;
+                        setupSync();
+                    }
+                });
+            } catch (err) {
+                console.error("Auth failed:", err);
+                showToast("Connection Error. Progress might not save.");
+            }
+        }
+
+        function setupSync() {
+            if (!currentUser) return;
+
+            // Doc path with even segments: artifacts/{id}/public/data/documents/main-doc
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'documents', 'main-doc');
+            
+            onSnapshot(docRef, (snap) => {
+                if (isSyncing) return; // Don't overwrite if we are the ones who pushed
+
+                if (snap.exists()) {
+                    const data = snap.data();
+                    
+                    // Only update DOM if the content is truly different (prevents cursor jump)
+                    if (data.content !== undefined && data.content !== editor.innerHTML) {
+                        editor.innerHTML = data.content;
+                        lastKnownContent = data.content;
+                    }
+                    if (data.title) docTitle.value = data.title;
+                    if (data.theme) setTheme(data.theme);
+                } else {
+                    // Initial content for new docs
+                    const initial = '<div><h1>Welcome</h1><p>Start writing your document here...</p></div>';
+                    editor.innerHTML = initial;
+                    lastKnownContent = initial;
+                }
+            }, (err) => console.error("Sync Error:", err));
+        }
+
+        let saveTimer = null;
+        let saveInFlight = null;
+        let pendingSave = false;
+
+        function saveSoon(delay = 800) {
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(() => {
+            void saveNow(); // fire-and-forget for normal UI actions
+          }, delay);
+        }
+
+        async function saveNow() {
+          if (!currentUser) return false;
+
+          // If a save is already running, mark another save needed.
+          if (saveInFlight) {
+            pendingSave = true;
+            return true;
+          }
+
+          isSyncing = true;
+          savingIndicator.classList.remove('hidden');
+
+          saveInFlight = (async () => {
+            try {
+              const content = editor.innerHTML;
+              const title = docTitle.value;
+
+              const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'documents', 'main-doc');
+              await Promise.race([
+                setDoc(docRef, {
+                  content,
+                  title,
+                  theme: currentTheme,
+                  updatedAt: new Date().toISOString(),
+                  userId: currentUser.uid
+                }, { merge: true }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('save timeout')), 8000))
+              ]);
+              return true;
+            } catch (e) {
+              console.error('Save Error:', e);
+              return false;
+            } finally {
+              saveInFlight = null;
+              savingIndicator.classList.add('hidden');
+              isSyncing = false;
+            }
+          })();
+
+          const ok = await saveInFlight;
+
+          // If changes happened during save, flush one more time.
+          if (pendingSave) {
+            pendingSave = false;
+            void saveNow();
+          }
+
+          return ok;
+        }
+
+        // --- Event Listeners ---
+        editor.addEventListener('input', () => {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(save, 1500); // Autosave after 1.5s idle
+        });
+
+        docTitle.addEventListener('input', () => {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(save, 1000);
+        });
+
+        // --- Export Logic ---
+        document.getElementById('pdf-btn').addEventListener('click', async() => {
+          const filename = (docTitle.value || 'youforgetyourdocTitle').trim().replace(/[^\w\- ]+/g, '') + '.pdf';
+          console.log('Filename:', filename);
+          const opt = {
+            margin: [15, 15, 15, 15],
+            filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'] }
+          };
+          console.log('Options:', opt);
+          const ok = await saveNow();
+          if (!ok) {
+            showToast('Save failed, exporting current content');
+          }
+          await html2pdf().set(opt).from(editor).save();
+          console.log('PDF Downloaded');
+          showToast('PDF Downloaded');
+        });
+
+        document.getElementById('docx-btn').addEventListener('click', () => {
+            const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export</title></head><body>";
+            const footer = "</body></html>";
+            const html = header + editor.innerHTML + footer;
+            
+            const blob = new Blob([html], { type: 'application/vnd.ms-word' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (docTitle.value || 'document') + '.doc';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast("Document Downloaded");
+        });
+
+        // Theme Switcher Global Handler
+        window.setTheme = function(name) {
+            currentTheme = name;
+            const body = document.getElementById('app-body');
+            body.className = 'transition-colors duration-300 theme-' + name;
+            
+            // Save theme preference
+            if (currentUser && !isSyncing) {
+              saveSoon(500);
+            }
+            // Close menu
+            document.getElementById('theme-menu').classList.add('hidden');
+        };
+
+        // Command Handlers
+        window.format = function(cmd, val = null) {
+            document.execCommand(cmd, false, val);
+            editor.focus();
+            saveSoon(500)
+        };
+
+        window.promptFontSize = function() {
+            const size = prompt("Enter font size (1-7):", "3");
+            if (size) window.format('fontSize', size);
+        };
+
+        window.showToast = function(msg) {
+            const toast = document.getElementById('status-toast');
+            document.getElementById('toast-message').innerText = msg;
+            toast.classList.remove('translate-y-20');
+            setTimeout(() => toast.classList.add('translate-y-20'), 3000);
+        };
+
+        // Theme Menu toggle
+        document.getElementById('theme-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('theme-menu').classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', () => {
+            document.getElementById('theme-menu').classList.add('hidden');
+        });
+
+        // Init Lucide
+        lucide.createIcons();
+        start();
+    </script>
+</body>
+</html>
