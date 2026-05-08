@@ -69,6 +69,56 @@
             white-space: nowrap;
             z-index: 20;
         }
+        .toolbar-btn {
+            position: relative;
+            transition: background-color 0.2s ease;
+          }
+          
+          .toolbar-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+          }
+          
+          .toolbar-btn.is-active {
+            background-color: rgba(255, 255, 255, 0.3);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+          }
+          /* Base toolbar button */
+        .toolbar-btn {
+            position: relative;
+            border-radius: 0.375rem;
+            transition: background-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        
+        /* Better visibility in light theme */
+        .theme-paper .toolbar-btn:hover {
+            background-color: rgba(15, 23, 42, 0.10); /* slate-900 at 10% */
+        }
+        .theme-paper .toolbar-btn.is-active {
+            background-color: rgba(15, 23, 42, 0.16);
+            box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.20);
+        }
+        
+        /* Keep strong visibility for dark themes */
+        .theme-dark .toolbar-btn:hover,
+        .theme-ocean .toolbar-btn:hover,
+        .theme-forest .toolbar-btn:hover {
+            background-color: rgba(255, 255, 255, 0.16);
+        }
+        .theme-dark .toolbar-btn.is-active,
+        .theme-ocean .toolbar-btn.is-active,
+        .theme-forest .toolbar-btn.is-active {
+            background-color: rgba(255, 255, 255, 0.24);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.30);
+        }
+        
+        /* Sepia tuned separately */
+        .theme-sepia .toolbar-btn:hover {
+            background-color: rgba(91, 70, 54, 0.12);
+        }
+        .theme-sepia .toolbar-btn.is-active {
+            background-color: rgba(91, 70, 54, 0.20);
+            box-shadow: inset 0 0 0 1px rgba(91, 70, 54, 0.24);
+        }
     </style>
 </head>
 <body class="transition-colors duration-300 theme-paper" id="app-body" style="background-color: var(--bg); color: var(--text);">
@@ -87,7 +137,7 @@
             <input 
                 id="doc-title"
                 type="text" 
-                value="Untitled Document"
+                value="IDK"
                 class="bg-transparent border-none text-xl font-semibold focus:outline-none focus:ring-0 w-48 md:w-64"
                 placeholder="Document Title"
             />
@@ -137,18 +187,18 @@
 
     <!-- Toolbar -->
     <div class="no-print bg-white/5 backdrop-blur-sm border-b border-white/10 p-2 flex flex-wrap justify-center gap-1">
-        <button onclick="format('bold')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Bold"><i data-lucide="bold" size="18"></i></button>
-        <button onclick="format('italic')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Italic"><i data-lucide="italic" size="18"></i></button>
-        <button onclick="format('underline')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Underline"><i data-lucide="underline" size="18"></i></button>
+        <button onclick="format('bold')" data-cmd="bold" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Bold"><i data-lucide="bold" size="18"></i></button>
+        <button onclick="format('italic')" data-cmd="italic" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Italic"><i data-lucide="italic" size="18"></i></button>
+        <button onclick="format('underline')" data-cmd="underline" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Underline"><i data-lucide="underline" size="18"></i></button>
         <div class="w-px h-6 bg-white/10 mx-1"></div>
-        <button onclick="format('insertUnorderedList')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Bullets"><i data-lucide="list" size="18"></i></button>
-        <button onclick="format('insertOrderedList')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Numbered"><i data-lucide="list-ordered" size="18"></i></button>
+        <button onclick="format('insertUnorderedList')" data-cmd="insertUnorderedList" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Bullets"><i data-lucide="list" size="18"></i></button>
+        <button onclick="format('insertOrderedList')" data-cmd="insertOrderedList" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Numbered"><i data-lucide="list-ordered" size="18"></i></button>
         <div class="w-px h-6 bg-white/10 mx-1"></div>
-        <button onclick="format('justifyLeft')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Align Left"><i data-lucide="align-left" size="18"></i></button>
-        <button onclick="format('justifyCenter')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Align Center"><i data-lucide="align-center" size="18"></i></button>
-        <button onclick="format('justifyRight')" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Align Right"><i data-lucide="align-right" size="18"></i></button>
+        <button onclick="format('justifyLeft')" data-cmd="justifyLeft" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Align Left"><i data-lucide="align-left" size="18"></i></button>
+        <button onclick="format('justifyCenter')" data-cmd="justifyCenter" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Align Center"><i data-lucide="align-center" size="18"></i></button>
+        <button onclick="format('justifyRight')" data-cmd="justifyRight" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Align Right"><i data-lucide="align-right" size="18"></i></button>
         <div class="w-px h-6 bg-white/10 mx-1"></div>
-        <button onclick="promptFontSize()" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Font Size"><i data-lucide="type" size="18"></i></button>
+        <button onclick="promptFontSize()" data-cmd="promptFontSize" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Font Size"><i data-lucide="type" size="18"></i></button>
     </div>
 
     <!-- Main Workspace -->
@@ -348,6 +398,22 @@
             showToast("Document Downloaded");
         });
 
+        function updateToolbarState() {
+            const buttons = document.querySelectorAll('.toolbar-btn[data-cmd]');
+            buttons.forEach((btn) => {
+              const cmd = btn.dataset.cmd;
+              let active = false;
+          
+              try {
+                active = document.queryCommandState(cmd);
+              } catch (_) {
+                active = false;
+              }
+          
+              btn.classList.toggle('is-active', active);
+            });
+          }
+
         // Theme Switcher Global Handler
         window.setTheme = function(name) {
             currentTheme = name;
@@ -366,8 +432,13 @@
         window.format = function(cmd, val = null) {
             document.execCommand(cmd, false, val);
             editor.focus();
+            updateToolbarState();
             saveSoon(500)
         };
+        
+        editor.addEventListener('keyup', updateToolbarState);
+        editor.addEventListener('mouseup', updateToolbarState);
+        document.addEventListener('selectionchange', updateToolbarState);
 
         window.promptFontSize = function() {
             const size = prompt("Enter font size (1-7):", "3");
