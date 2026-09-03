@@ -1,0 +1,17 @@
+{
+  "name": "Cloud Word Editor",
+  "install": "python3 --version",
+  "terminals": [
+    {
+      "name": "web",
+      "command": "python3 -m http.server 8080 --bind 0.0.0.0 --directory Basic",
+      "description": "Serves the Cloud Word Editor static app. Open http://localhost:8080/origin.html"
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 8080
+    }
+  ]
+}
