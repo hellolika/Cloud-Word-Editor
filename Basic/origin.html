@@ -194,7 +194,7 @@
         <button onclick="format('insertUnorderedList')" data-cmd="insertUnorderedList" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Bullets"><i data-lucide="list" size="18"></i></button>
         <button onclick="format('insertOrderedList')" data-cmd="insertOrderedList" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Numbered"><i data-lucide="list-ordered" size="18"></i></button>
         <div class="w-px h-6 bg-white/10 mx-1"></div>
-        <button onclick="format('justifyLeft')" data-cmd="justifyLeft" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Align Left"><i data-lucide="align-left" size="18"></i></button>
+        <button onclick="format('justifyLeft')" data-cmd="justifyLeft" class="toolbar-btn p-2 rounded-md hover:bg-white/20 is-active" data-label="Align Left"><i data-lucide="align-left" size="18"></i></button>
         <button onclick="format('justifyCenter')" data-cmd="justifyCenter" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Align Center"><i data-lucide="align-center" size="18"></i></button>
         <button onclick="format('justifyRight')" data-cmd="justifyRight" class="toolbar-btn p-2 rounded-md hover:bg-white/20" data-label="Align Right"><i data-lucide="align-right" size="18"></i></button>
         <div class="w-px h-6 bg-white/10 mx-1"></div>
@@ -353,12 +353,12 @@
         // --- Event Listeners ---
         editor.addEventListener('input', () => {
             clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(save, 1500); // Autosave after 1.5s idle
+            saveTimeout = setTimeout(saveNow(0), 1500); // Autosave after 1.5s idle
         });
 
         docTitle.addEventListener('input', () => {
             clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(save, 1000);
+            saveTimeout = setTimeout(saveNow(0), 1000);
         });
 
         // --- Export Logic ---
@@ -406,6 +406,7 @@
           
               try {
                 active = document.queryCommandState(cmd);
+                //console.log('active from document.queryCommandState(cmd) ', cmd, active, '/n');
               } catch (_) {
                 active = false;
               }
@@ -430,6 +431,7 @@
 
         // Command Handlers
         window.format = function(cmd, val = null) {
+            console.log('format called', cmd, val);
             document.execCommand(cmd, false, val);
             editor.focus();
             updateToolbarState();
